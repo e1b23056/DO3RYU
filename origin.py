@@ -33,6 +33,10 @@ if bg is None:
 cv2.namedWindow("Pose Game", cv2.WINDOW_NORMAL)
 cv2.setWindowProperty("Pose Game", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
+# === ここでフルスクリーン設定 ===
+cv2.namedWindow("Pose Game", cv2.WINDOW_NORMAL)
+cv2.setWindowProperty("Pose Game", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+
 
 with mp_pose.Pose(
     static_image_mode=False,
