@@ -23,7 +23,7 @@ new_target_frame_interval = 50  # 50フレームごとに的を移動
 hit_flag = False  # 的に当たった直後かどうかの判定
 
 # 背景画像の読み込み
-bg = cv2.imread(r"C:\oit\zemi\background.jpg")
+bg = cv2.imread("background.jpg")
 
 if bg is None:
     print("背景画像が見つかりません。")
