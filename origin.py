@@ -69,31 +69,32 @@ with mp_pose.Pose(
         right_wrist_x = right_wrist_y = None
         left_wrist_x = left_wrist_y = None
 
+        #カメラで人が認識できたら
+        if results.pose_landmarks: 
+            # 手首の座標を取得
+            right_wrist = results.pose_landmarks.landmark[15]
+            left_wrist = results.pose_landmarks.landmark[16]
 
-        # 手首の座標を取得
-        right_wrist = results.pose_landmarks.landmark[15]
-        left_wrist = results.pose_landmarks.landmark[16]
+            right_wrist_x = int(right_wrist.x * display_frame.shape[1])
+            right_wrist_y = int(right_wrist.y * display_frame.shape[0])
+            left_wrist_x = int(left_wrist.x * display_frame.shape[1])
+            left_wrist_y = int(left_wrist.y * display_frame.shape[0])
 
-        right_wrist_x = int(right_wrist.x * display_frame.shape[1])
-        right_wrist_y = int(right_wrist.y * display_frame.shape[0])
-        left_wrist_x = int(left_wrist.x * display_frame.shape[1])
-        left_wrist_y = int(left_wrist.y * display_frame.shape[0])
+            #右手首を描画 (緑色の点)
+            cv2.circle(display_frame, (right_wrist_x, right_wrist_y), 10, (0, 255, 0), -1)
+            #左手首を描画 (緑色の点)
+            cv2.circle(display_frame, (left_wrist_x, left_wrist_y), 10, (0, 255, 0), -1)
 
-        #右手首を描画 (緑色の点)
-        cv2.circle(display_frame, (right_wrist_x, right_wrist_y), 10, (0, 255, 0), -1)
-        #左手首を描画 (緑色の点)
-        cv2.circle(display_frame, (left_wrist_x, left_wrist_y), 10, (0, 255, 0), -1)
+            # 当たり判定（両手と的の距離）
+            if right_wrist_x is not None and left_wrist_x is not None:
+                distance_right = ((right_wrist_x - target_center_x) ** 2 + (right_wrist_y - target_center_y) ** 2) ** 0.5
+                distance_left = ((left_wrist_x - target_center_x) ** 2 + (left_wrist_y - target_center_y) ** 2) ** 0.5
 
-        # 当たり判定（両手と的の距離）
-        if right_wrist_x is not None and left_wrist_x is not None:
-            distance_right = ((right_wrist_x - target_center_x) ** 2 + (right_wrist_y - target_center_y) ** 2) ** 0.5
-            distance_left = ((left_wrist_x - target_center_x) ** 2 + (left_wrist_y - target_center_y) ** 2) ** 0.5
-
-            if (distance_right < target_radius or distance_left < target_radius) and not hit_flag:
-                score += 1
-                hit_flag = True
-            elif distance_right >= target_radius and distance_left >= target_radius:
-                hit_flag = False
+                if (distance_right < target_radius or distance_left < target_radius) and not hit_flag:
+                    score += 1
+                    hit_flag = True
+                elif distance_right >= target_radius and distance_left >= target_radius:
+                    hit_flag = False
 
         # 的を描画
         cv2.circle(display_frame, (target_center_x, target_center_y), target_radius, (0, 0, 255), -1)
