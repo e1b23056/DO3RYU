@@ -23,7 +23,7 @@ new_target_frame_interval = 50  # 50フレームごとに的を移動
 hit_flag = False  # 的に当たった直後かどうかの判定
 
 # 背景画像の読み込み
-bg = cv2.imread(r"C:\oit\home\py24\zemi\background.jpg")
+bg = cv2.imread("background.jpg")
 
 if bg is None:
     print("背景画像が見つかりません。")
@@ -51,6 +51,9 @@ with mp_pose.Pose(
         if not ret:
             break
 
+        #反転（こっちのがやりやすそう）
+        frame = cv2.flip(frame, 1)
+
         # 背景をカメラサイズにリサイズ
         bg_resized = cv2.resize(bg, (frame.shape[1], frame.shape[0]))
         display_frame = bg_resized.copy()
@@ -70,13 +73,8 @@ with mp_pose.Pose(
         right_wrist_x = right_wrist_y = None
         left_wrist_x = left_wrist_y = None
 
-        if results.pose_landmarks:
-            mp_draw.draw_landmarks(
-                display_frame,
-                results.pose_landmarks,
-                mp_pose.POSE_CONNECTIONS
-            )
-
+        #カメラで人が認識できたら
+        if results.pose_landmarks: 
             # 手首の座標を取得
             right_wrist = results.pose_landmarks.landmark[15]
             left_wrist = results.pose_landmarks.landmark[16]
@@ -86,16 +84,21 @@ with mp_pose.Pose(
             left_wrist_x = int(left_wrist.x * display_frame.shape[1])
             left_wrist_y = int(left_wrist.y * display_frame.shape[0])
 
-        # 当たり判定（両手と的の距離）
-        if right_wrist_x is not None and left_wrist_x is not None:
-            distance_right = ((right_wrist_x - target_center_x) ** 2 + (right_wrist_y - target_center_y) ** 2) ** 0.5
-            distance_left = ((left_wrist_x - target_center_x) ** 2 + (left_wrist_y - target_center_y) ** 2) ** 0.5
+            #右手首を描画 (緑色の点)
+            cv2.circle(display_frame, (right_wrist_x, right_wrist_y), 10, (0, 255, 0), -1)
+            #左手首を描画 (緑色の点)
+            cv2.circle(display_frame, (left_wrist_x, left_wrist_y), 10, (0, 255, 0), -1)
 
-            if (distance_right < target_radius or distance_left < target_radius) and not hit_flag:
-                score += 1
-                hit_flag = True
-            elif distance_right >= target_radius and distance_left >= target_radius:
-                hit_flag = False
+            # 当たり判定（両手と的の距離）
+            if right_wrist_x is not None and left_wrist_x is not None:
+                distance_right = ((right_wrist_x - target_center_x) ** 2 + (right_wrist_y - target_center_y) ** 2) ** 0.5
+                distance_left = ((left_wrist_x - target_center_x) ** 2 + (left_wrist_y - target_center_y) ** 2) ** 0.5
+
+                if (distance_right < target_radius or distance_left < target_radius) and not hit_flag:
+                    score += 1
+                    hit_flag = True
+                elif distance_right >= target_radius and distance_left >= target_radius:
+                    hit_flag = False
 
         # 的を描画
         cv2.circle(display_frame, (target_center_x, target_center_y), target_radius, (0, 0, 255), -1)
