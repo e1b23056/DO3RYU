@@ -17,7 +17,8 @@ score = 0
 # 的の初期設定
 target_radius = 50
 frame_counter = 0
-new_target_frame_interval = 50  # 50フレームごとに的を移動
+new_target_frame_interval = 25  # 25フレームごとに的を移動 (50→25)
+hit_flag = False  # 的に当たった直後かどうかの判定
 
 # 加点的（赤）
 target_plus_x = 100
@@ -45,8 +46,8 @@ with mp_pose.Pose(
     static_image_mode=False,
     model_complexity=0,
     enable_segmentation=False,
-    min_detection_confidence=0.5,
-    min_tracking_confidence=0.5
+    min_detection_confidence=0.3,
+    min_tracking_confidence=0.3
 ) as pose:
 
     while True:
@@ -68,9 +69,18 @@ with mp_pose.Pose(
         frame_counter += 1
         if frame_counter % new_target_frame_interval == 0:
             h, w, _ = display_frame.shape
+            target_plus_x = random.randint(target_radius, w - target_radius - 1)
+            target_plus_y = random.randint(target_radius, h - target_radius - 1)
+            target_minus_x = random.randint(target_radius, w - target_radius - 1)
+            target_minus_y = random.randint(target_radius, h - target_radius - 1)
+            frame_counter = 0
+        
+        if target_plus_x < 0:
             # 加点的の位置
             target_plus_x = random.randint(target_radius, w - target_radius - 1)
             target_plus_y = random.randint(target_radius, h - target_radius - 1)
+            
+        if target_minus_x < 0:
             # 減点的の位置 ← 追加
             target_minus_x = random.randint(target_radius, w - target_radius - 1)
             target_minus_y = random.randint(target_radius, h - target_radius - 1)
@@ -102,6 +112,9 @@ with mp_pose.Pose(
             if (distance_right_plus < target_radius or distance_left_plus < target_radius) and not hit_plus_flag:
                 score += 1
                 hit_plus_flag = True
+                #的を外に
+                target_plus_x = -100
+                frame_counter = 0
             elif distance_right_plus >= target_radius and distance_left_plus >= target_radius:
                 hit_plus_flag = False
 
@@ -112,6 +125,9 @@ with mp_pose.Pose(
             if (distance_right_minus < target_radius or distance_left_minus < target_radius) and not hit_minus_flag:
                 score -= 1
                 hit_minus_flag = True
+                #的を外に
+                target_minus_x = -100
+                frame_counter = 0
             elif distance_right_minus >= target_radius and distance_left_minus >= target_radius:
                 hit_minus_flag = False
 
