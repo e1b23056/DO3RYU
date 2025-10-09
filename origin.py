@@ -75,11 +75,20 @@ with mp_pose.Pose(
 
         # === スタート画面 ===
         if state == "start":
-            display_frame[:] = (0, 0, 0)
-            cv2.putText(display_frame, "POSE GAME", (200, 200),
-                        cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 3)
-            cv2.putText(display_frame, "Press SPACE to Start", (150, 300),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+            # スタート画像の読み込み（最初に一度だけ）
+            if 'start_img' not in locals():
+                start_img = cv2.imread("start_screen.jpg")
+                if start_img is None:
+                    print("スタート画面画像が見つかりません。")
+                    exit()
+
+            # 画面サイズに合わせてリサイズ
+            start_resized = cv2.resize(start_img, (frame.shape[1], frame.shape[0]))
+
+            # 表示
+            display_frame = start_resized.copy()
+            cv2.putText(display_frame, "Press SPACE to Start", (150, 600),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 255, 255), 3)
 
             cv2.imshow("Pose Game", display_frame)
             key = cv2.waitKey(5) & 0xFF
