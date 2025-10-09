@@ -31,16 +31,9 @@ target_radius = 50
 frame_counter = 0
 new_target_frame_interval = 25  # 25フレームごとに的を移動 (50→25)
 hit_flag = False  # 的に当たった直後かどうかの判定
-
-# 加点的（赤）
-target_plus_x = 100
-target_plus_y = 100
-hit_plus_flag = False
-
-# 減点的（青）
-target_minus_x = 300
-target_minus_y = 200
-hit_minus_flag = False
+target_type = 0 #的の種別(0:加点,1:減点)
+target_x = 100
+target_y = 100
 
 # 背景画像の読み込み
 bg = cv2.imread("background.jpg")
@@ -104,21 +97,10 @@ with mp_pose.Pose(
             frame_counter += 1
             if frame_counter % new_target_frame_interval == 0:
                 h, w, _ = display_frame.shape
-                target_plus_x = random.randint(target_radius, w - target_radius - 1)
-                target_plus_y = random.randint(target_radius, h - target_radius - 1)
-                target_minus_x = random.randint(target_radius, w - target_radius - 1)
-                target_minus_y = random.randint(target_radius, h - target_radius - 1)
+                target_type = random.choice([0, 1]) #的の抽選
+                target_x = random.randint(target_radius, w - target_radius - 1)
+                target_y = random.randint(target_radius, h - target_radius - 1)
                 frame_counter = 0
-        
-            if target_plus_x < 0:
-                # 加点的の位置
-                target_plus_x = random.randint(target_radius, w - target_radius - 1)
-                target_plus_y = random.randint(target_radius, h - target_radius - 1)
-            
-            if target_minus_x < 0:
-                # 減点的の位置 ← 追加
-                target_minus_x = random.randint(target_radius, w - target_radius - 1)
-                target_minus_y = random.randint(target_radius, h - target_radius - 1)
 
             # Pose骨格の描画 ＋ 手首座標の取得
             right_wrist_x = right_wrist_y = None
@@ -140,35 +122,29 @@ with mp_pose.Pose(
                 #左手首を描画 (緑色の点)
                 cv2.circle(display_frame, (left_wrist_x, left_wrist_y), 10, (0, 255, 0), -1)
 
-                # --- 加点的との当たり判定 ---
-                distance_right_plus = ((right_wrist_x - target_plus_x) ** 2 + (right_wrist_y - target_plus_y) ** 2) ** 0.5
-                distance_left_plus = ((left_wrist_x - target_plus_x) ** 2 + (left_wrist_y - target_plus_y) ** 2) ** 0.5
+                
+                # --- 的との当たり判定 ---
+                distance_right = ((right_wrist_x - target_x) ** 2 + (right_wrist_y - target_y) ** 2) ** 0.5
+                distance_left = ((left_wrist_x - target_x) ** 2 + (left_wrist_y - target_y) ** 2) ** 0.5
 
-                if (distance_right_plus < target_radius or distance_left_plus < target_radius) and not hit_plus_flag:
-                    score += 1
-                    hit_plus_flag = True
+                if (distance_right < target_radius or distance_left < target_radius) and not hit_flag:
+                    if target_type == 0:
+                        score += 1
+                    elif target_type == 1:
+                        score -= 1
+                    hit_flag = True
                     #的を外に
-                    target_plus_x = -100
+                    target_x = -100
                     frame_counter = 0
-                elif distance_right_plus >= target_radius and distance_left_plus >= target_radius:
-                    hit_plus_flag = False
-
-                # --- 減点的との当たり判定 ---
-                distance_right_minus = ((right_wrist_x - target_minus_x) ** 2 + (right_wrist_y - target_minus_y) ** 2) ** 0.5
-                distance_left_minus = ((left_wrist_x - target_minus_x) ** 2 + (left_wrist_y - target_minus_y) ** 2) ** 0.5
-
-                if (distance_right_minus < target_radius or distance_left_minus < target_radius) and not hit_minus_flag:
-                    score -= 1
-                    hit_minus_flag = True
-                    #的を外に
-                    target_minus_x = -100
-                    frame_counter = 0
-                elif distance_right_minus >= target_radius and distance_left_minus >= target_radius:
-                    hit_minus_flag = False
+                elif distance_right >= target_radius and distance_left >= target_radius:
+                    hit_flag = False
 
             # 的を描画
-            cv2.circle(display_frame, (target_plus_x, target_plus_y), target_radius, (0, 0, 255), -1)   # 赤 = 加点
-            cv2.circle(display_frame, (target_minus_x, target_minus_y), target_radius, (255, 0, 0), -1) # 青 = 減点 ← 追加
+            if target_type == 0:
+                cv2.circle(display_frame, (target_x, target_y), target_radius, (0, 0, 255), -1) # 赤 = 加点
+            elif target_type == 1:
+                cv2.circle(display_frame, (target_x, target_y), target_radius, (255, 0, 0), -1) # 青 = 減点 
+
 
             # TIMEとSCORE表示
             elapsed = int(time.time() - start_time)
