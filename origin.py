@@ -35,7 +35,6 @@ target_type = 0 #的の種別(0:加点,1:減点)
 target_x = 100
 target_y = 100
 
-
 # 背景画像の読み込み
 bg = cv2.imread("background.jpg")
 
@@ -102,6 +101,7 @@ with mp_pose.Pose(
                 target_x = random.randint(target_radius, w - target_radius - 1)
                 target_y = random.randint(target_radius, h - target_radius - 1)
                 frame_counter = 0
+
             # Pose骨格の描画 ＋ 手首座標の取得
             right_wrist_x = right_wrist_y = None
             left_wrist_x = left_wrist_y = None
@@ -122,6 +122,7 @@ with mp_pose.Pose(
                 #左手首を描画 (緑色の点)
                 cv2.circle(display_frame, (left_wrist_x, left_wrist_y), 10, (0, 255, 0), -1)
 
+                
                 # --- 的との当たり判定 ---
                 distance_right = ((right_wrist_x - target_x) ** 2 + (right_wrist_y - target_y) ** 2) ** 0.5
                 distance_left = ((left_wrist_x - target_x) ** 2 + (left_wrist_y - target_y) ** 2) ** 0.5
@@ -143,6 +144,7 @@ with mp_pose.Pose(
                 cv2.circle(display_frame, (target_x, target_y), target_radius, (0, 0, 255), -1) # 赤 = 加点
             elif target_type == 1:
                 cv2.circle(display_frame, (target_x, target_y), target_radius, (255, 0, 0), -1) # 青 = 減点 
+
 
             # TIMEとSCORE表示
             elapsed = int(time.time() - start_time)
