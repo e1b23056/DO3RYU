@@ -56,6 +56,15 @@ if bg is None or start_img is None:
     print("背景またはスタート画面画像が見つかりません。")
     exit()
 
+# 的画像の読み込み
+target_img_plus = cv2.imread("obake_red.png", cv2.IMREAD_UNCHANGED)   # 加点用
+target_img_minus = cv2.imread("obake_blue.png", cv2.IMREAD_UNCHANGED) # 減点用
+
+if target_img_plus is None or target_img_minus is None:
+    print("的の画像が見つかりません。")
+    exit()
+
+
 # フォント設定
 font_path = "Creepster-Regular.ttf"
 font_title = ImageFont.truetype(font_path, 100)
@@ -181,8 +190,48 @@ with mp_pose.Pose(
                 elif distance_right >= target_radius and distance_left >= target_radius:
                     hit_flag = False
 
-            color = (0, 0, 255) if target_type == 0 else (255, 0, 0)
-            cv2.circle(display_frame, (target_x, target_y), target_radius, color, -1)
+            # === 的の描画 ===
+            # 画像をリサイズ（target_radius×2 の正方形）
+            target_size = target_radius * 2
+            if target_type == 0:
+                target_img = cv2.resize(target_img_plus, (target_size, target_size))
+            else:
+                target_img = cv2.resize(target_img_minus, (target_size, target_size))
+
+            # 画像を中央配置（x1,y1が左上、x2,y2が右下）
+            x1 = target_x - target_radius
+            y1 = target_y - target_radius
+            x2 = target_x + target_radius
+            y2 = target_y + target_radius
+
+            # display_frameのサイズ内に収める
+            x1_disp = max(0, x1)
+            y1_disp = max(0, y1)
+            x2_disp = min(display_frame.shape[1], x2)
+            y2_disp = min(display_frame.shape[0], y2)
+
+            # 的画像の切り出し範囲
+            x1_img = x1_disp - x1
+            y1_img = y1_disp - y1
+            x2_img = x1_img + (x2_disp - x1_disp)
+            y2_img = y1_img + (y2_disp - y1_disp)
+
+            # 貼り付け範囲（幅と高さ）を計算
+            w_disp = x2_disp - x1_disp
+            h_disp = y2_disp - y1_disp
+            w_img = x2_img - x1_img
+            h_img = y2_img - y1_img
+
+            # 幅・高さが1以上かチェック
+            if w_disp > 0 and h_disp > 0 and w_img > 0 and h_img > 0:
+                target_img_crop = target_img[y1_img:y2_img, x1_img:x2_img]
+                alpha_s = target_img_crop[:, :, 3] / 255.0
+                alpha_l = 1.0 - alpha_s
+                for c in range(3):
+                    display_frame[y1_disp:y2_disp, x1_disp:x2_disp, c] = (
+                    alpha_s * target_img_crop[:, :, c] +
+                    alpha_l * display_frame[y1_disp:y2_disp, x1_disp:x2_disp, c]
+                    )
 
             elapsed = int(time.time() - start_time)
             remaining = max(0, game_time - elapsed)
