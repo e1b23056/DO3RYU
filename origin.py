@@ -5,6 +5,7 @@ import time
 import os
 from PIL import Image, ImageDraw, ImageFont
 import numpy as np
+import math
 
 # MediaPipe Pose 初期化
 mp_pose = mp.solutions.pose
@@ -33,6 +34,20 @@ hit_flag = False
 target_type = 0
 target_x = 100
 target_y = 100
+
+target_amp_x = 150  # X方向の動きの振幅（ピクセル）
+target_amp_y = 100   # Y方向の動きの振幅（ピクセル）
+target_speed = 1.0  # 動きの速さ（秒間）
+target_center_x = 100 # 動きの中心X座標
+target_center_y = 100 # 動きの中心Y座標
+
+def generate_new_target(prev_x, prev_y, radius, amp_x, amp_y, w, h, min_dist=120):#的の位置を離れるような設定
+    while True:
+        new_x = random.randint(radius + amp_x, w - radius - amp_x - 1)
+        new_y = random.randint(radius + amp_y, h - radius - amp_y - 1)
+        distance = ((new_x - prev_x) ** 2 + (new_y - prev_y) ** 2) ** 0.5
+        if distance > min_dist:
+            return new_x, new_y
 
 # 背景・スタート画像
 bg = cv2.imread("background.jpg")
@@ -72,6 +87,7 @@ with mp_pose.Pose(
 ) as pose:
 
     while True:
+        current_time = time.time()
         ret, frame = cap.read()
         if not ret:
             break
@@ -99,6 +115,9 @@ with mp_pose.Pose(
             if key == 32:
                 score = 0
                 start_time = time.time()
+                h, w, _ = display_frame.shape
+                target_center_x = target_x = random.randint(target_radius + target_amp_x, w - target_radius - target_amp_x - 1)
+                target_center_y = target_y = random.randint(target_radius + target_amp_y, h - target_radius - target_amp_y - 1)
                 state = "play"
             elif key == 27:
                 break
@@ -106,13 +125,35 @@ with mp_pose.Pose(
 
         # === ゲーム中 ===
         if state == "play":
+            prev_center_x = target_center_x
+            prev_center_y = target_center_y
             frame_counter += 1
-            if frame_counter % new_target_frame_interval == 0:
+            if target_x < 0:# 画面外
                 h, w, _ = display_frame.shape
                 target_type = random.choice([0, 1])
-                target_x = random.randint(target_radius, w - target_radius - 1)
-                target_y = random.randint(target_radius, h - target_radius - 1)
+                prev_center_x = target_center_x
+                prev_center_y = target_center_y
+                target_center_x, target_center_y = generate_new_target(
+                prev_center_x, prev_center_y, target_radius, target_amp_x, target_amp_y, w, h, min_dist=120
+                )
+                target_x = target_center_x
+                target_y = target_center_y
                 frame_counter = 0
+            elif frame_counter % new_target_frame_interval == 0: #周期
+                target_type = random.choice([0, 1]) 
+                prev_center_x = target_center_x
+                prev_center_y = target_center_y
+                target_center_x, target_center_y = generate_new_target(
+                prev_center_x, prev_center_y, target_radius, target_amp_x, target_amp_y, w, h, min_dist=120
+                )
+                target_x = target_center_x
+                target_y = target_center_y
+                frame_counter = 0
+
+            if target_x >= 0: #的の動き
+                t = current_time * target_speed
+                target_x = int(target_center_x + target_amp_x * math.cos(t) + 30 * math.sin(2 * t))
+                target_y = int(target_center_y + target_amp_y * math.sin(t) + 20 * math.cos(3 * t))
 
             right_wrist_x = right_wrist_y = None
             left_wrist_x = left_wrist_y = None
