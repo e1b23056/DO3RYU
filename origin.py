@@ -41,6 +41,9 @@ target_speed = 1.0  # 動きの速さ（秒間）
 target_center_x = 100 # 動きの中心X座標
 target_center_y = 100 # 動きの中心Y座標
 
+targets = []  # 各お化けのデータを格納
+max_targets = 2  # 同時に表示する最大数
+
 def generate_new_target(prev_x, prev_y, radius, amp_x, amp_y, w, h, min_dist=120):#的の位置を離れるような設定
     while True:
         new_x = random.randint(radius + amp_x, w - radius - amp_x - 1)
@@ -134,105 +137,98 @@ with mp_pose.Pose(
 
         # === ゲーム中 ===
         if state == "play":
-            prev_center_x = target_center_x
-            prev_center_y = target_center_y
+            current_time = time.time()
             frame_counter += 1
-            if target_x < 0:# 画面外
+
+            # --- お化けリストが空なら初期生成 ---
+            if len(targets) == 0:
                 h, w, _ = display_frame.shape
-                target_type = random.choice([0, 1])
-                prev_center_x = target_center_x
-                prev_center_y = target_center_y
-                target_center_x, target_center_y = generate_new_target(
-                prev_center_x, prev_center_y, target_radius, target_amp_x, target_amp_y, w, h, min_dist=120
-                )
-                target_x = target_center_x
-                target_y = target_center_y
-                frame_counter = 0
-            elif frame_counter % new_target_frame_interval == 0: #周期
-                target_type = random.choice([0, 1]) 
-                prev_center_x = target_center_x
-                prev_center_y = target_center_y
-                target_center_x, target_center_y = generate_new_target(
-                prev_center_x, prev_center_y, target_radius, target_amp_x, target_amp_y, w, h, min_dist=120
-                )
-                target_x = target_center_x
-                target_y = target_center_y
-                frame_counter = 0
-
-            if target_x >= 0: #的の動き
-                t = current_time * target_speed
-                target_x = int(target_center_x + target_amp_x * math.cos(t) + 30 * math.sin(2 * t))
-                target_y = int(target_center_y + target_amp_y * math.sin(t) + 20 * math.cos(3 * t))
-
-            right_wrist_x = right_wrist_y = None
-            left_wrist_x = left_wrist_y = None
-
-            if results.pose_landmarks:
-                right_wrist = results.pose_landmarks.landmark[15]
-                left_wrist = results.pose_landmarks.landmark[16]
-
-                right_wrist_x = int(right_wrist.x * display_frame.shape[1])
-                right_wrist_y = int(right_wrist.y * display_frame.shape[0])
-                left_wrist_x = int(left_wrist.x * display_frame.shape[1])
-                left_wrist_y = int(left_wrist.y * display_frame.shape[0])
-
-                cv2.circle(display_frame, (right_wrist_x, right_wrist_y), 10, (0, 255, 0), -1)
-                cv2.circle(display_frame, (left_wrist_x, left_wrist_y), 10, (0, 255, 0), -1)
-
-                distance_right = ((right_wrist_x - target_x)**2 + (right_wrist_y - target_y)**2)**0.5
-                distance_left = ((left_wrist_x - target_x)**2 + (left_wrist_y - target_y)**2)**0.5
-
-                if (distance_right < target_radius or distance_left < target_radius) and not hit_flag:
-                    score += (1 if target_type == 0 else -1)
-                    hit_flag = True
-                    target_x = -100
-                    frame_counter = 0
-                elif distance_right >= target_radius and distance_left >= target_radius:
-                    hit_flag = False
-
-            # === 的の描画 ===
-            # 画像をリサイズ（target_radius×2 の正方形）
-            target_size = target_radius * 2
-            if target_type == 0:
-                target_img = cv2.resize(target_img_plus, (target_size, target_size))
-            else:
-                target_img = cv2.resize(target_img_minus, (target_size, target_size))
-
-            # 画像を中央配置（x1,y1が左上、x2,y2が右下）
-            x1 = target_x - target_radius
-            y1 = target_y - target_radius
-            x2 = target_x + target_radius
-            y2 = target_y + target_radius
-
-            # display_frameのサイズ内に収める
-            x1_disp = max(0, x1)
-            y1_disp = max(0, y1)
-            x2_disp = min(display_frame.shape[1], x2)
-            y2_disp = min(display_frame.shape[0], y2)
-
-            # 的画像の切り出し範囲
-            x1_img = x1_disp - x1
-            y1_img = y1_disp - y1
-            x2_img = x1_img + (x2_disp - x1_disp)
-            y2_img = y1_img + (y2_disp - y1_disp)
-
-            # 貼り付け範囲（幅と高さ）を計算
-            w_disp = x2_disp - x1_disp
-            h_disp = y2_disp - y1_disp
-            w_img = x2_img - x1_img
-            h_img = y2_img - y1_img
-
-            # 幅・高さが1以上かチェック
-            if w_disp > 0 and h_disp > 0 and w_img > 0 and h_img > 0:
-                target_img_crop = target_img[y1_img:y2_img, x1_img:x2_img]
-                alpha_s = target_img_crop[:, :, 3] / 255.0
-                alpha_l = 1.0 - alpha_s
-                for c in range(3):
-                    display_frame[y1_disp:y2_disp, x1_disp:x2_disp, c] = (
-                    alpha_s * target_img_crop[:, :, c] +
-                    alpha_l * display_frame[y1_disp:y2_disp, x1_disp:x2_disp, c]
+                for _ in range(max_targets):
+                    tx, ty = generate_new_target(
+                        random.randint(100, w-100),
+                        random.randint(100, h-100),
+                        target_radius, target_amp_x, target_amp_y, w, h
                     )
+                    ttype = random.choice([0, 1])
+                    tcenterx, tcentery = tx, ty
+                    targets.append({
+                        "x": tx, "y": ty,
+                        "center_x": tcenterx, "center_y": tcentery,
+                        "type": ttype,
+                        "hit": False,
+                        "start_time": current_time
+                    })
 
+            # --- 各お化けを更新＆描画 ---
+            for target in targets:
+                # 動きの更新
+                t = current_time * target_speed
+                target["x"] = int(target["center_x"] + target_amp_x * math.cos(t + target["center_x"]/100))
+                target["y"] = int(target["center_y"] + target_amp_y * math.sin(t + target["center_y"]/100))
+
+                # 当たり判定（Pose）
+                if results.pose_landmarks:
+                    right_wrist = results.pose_landmarks.landmark[15]
+                    left_wrist = results.pose_landmarks.landmark[16]
+
+                    rwx = int(right_wrist.x * display_frame.shape[1])
+                    rwy = int(right_wrist.y * display_frame.shape[0])
+                    lwx = int(left_wrist.x * display_frame.shape[1])
+                    lwy = int(left_wrist.y * display_frame.shape[0])
+
+                    dist_r = ((rwx - target["x"])**2 + (rwy - target["y"])**2)**0.5
+                    dist_l = ((lwx - target["x"])**2 + (lwy - target["y"])**2)**0.5
+
+                    #右手首を描画 (緑色の点)
+                    cv2.circle(display_frame, (rwx, rwy), 10, (0, 255, 0), -1)
+                    #左手首を描画 (緑色の点)
+                    cv2.circle(display_frame, (lwx, lwy), 10, (0, 255, 0), -1)
+
+                    if (dist_r < target_radius or dist_l < target_radius) and not target["hit"]:
+                        score += (1 if target["type"] == 0 else -1)
+                        target["hit"] = True
+                        target["x"] = -9999  # 一旦画面外へ
+
+                # --- 的画像の描画 ---
+                target_size = target_radius * 2
+                target_img = target_img_plus if target["type"] == 0 else target_img_minus
+                target_img = cv2.resize(target_img, (target_size, target_size))
+
+                x1, y1 = target["x"] - target_radius, target["y"] - target_radius
+                x2, y2 = target["x"] + target_radius, target["y"] + target_radius
+
+                x1_disp, y1_disp = max(0, x1), max(0, y1)
+                x2_disp, y2_disp = min(display_frame.shape[1], x2), min(display_frame.shape[0], y2)
+
+                if x2_disp > x1_disp and y2_disp > y1_disp:
+                    crop = target_img[0:(y2_disp - y1_disp), 0:(x2_disp - x1_disp)]
+                    if crop.shape[2] == 4:
+                        alpha = crop[:, :, 3] / 255.0
+                        for c in range(3):
+                            display_frame[y1_disp:y2_disp, x1_disp:x2_disp, c] = (
+                                alpha * crop[:, :, c] +
+                                (1 - alpha) * display_frame[y1_disp:y2_disp, x1_disp:x2_disp, c]
+                            )
+
+            # --- 古いお化けを消し、新しいお化けを補充 ---
+            targets = [t for t in targets if not t["hit"]]  # 当たったものを削除
+            while len(targets) < max_targets:
+                h, w, _ = display_frame.shape
+                tx, ty = generate_new_target(
+                    random.randint(100, w-100),
+                    random.randint(100, h-100),
+                    target_radius, target_amp_x, target_amp_y, w, h
+                )
+                ttype = random.choice([0, 1])
+                targets.append({
+                    "x": tx, "y": ty,
+                    "center_x": tx, "center_y": ty,
+                    "type": ttype,
+                    "hit": False,
+                    "start_time": current_time
+                })
+
+            # --- 残り時間・スコア描画 ---
             elapsed = int(time.time() - start_time)
             remaining = max(0, game_time - elapsed)
 
@@ -242,13 +238,13 @@ with mp_pose.Pose(
             draw.text((400, 30), f"SCORE: {score}", font=font_text, fill=(255, 255, 255))
             display_frame = cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
 
+            # --- 終了判定 ---
             if remaining <= 0:
                 scores.append(score)
                 with open(score_file, "w") as f:
                     for s in scores:
                         f.write(str(s) + "\n")
                 state = "result"
-
         # === リザルト画面 ===
         elif state == "result":
             display_frame[:] = (0, 0, 0)
