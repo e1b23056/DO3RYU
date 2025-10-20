@@ -60,13 +60,14 @@ if bg is None or start_img is None:
     exit()
 
 # 的画像の読み込み
-target_img_plus = cv2.imread("obake_red.png", cv2.IMREAD_UNCHANGED)   # 加点用
-target_img_minus = cv2.imread("obake_blue.png", cv2.IMREAD_UNCHANGED) # 減点用
+# 的画像の読み込み
+target_img_normal = cv2.imread("obake_green.png", cv2.IMREAD_UNCHANGED) # 普通用
+target_img_right = cv2.imread("obake_red.png", cv2.IMREAD_UNCHANGED)   # 右用
+target_img_left = cv2.imread("obake_blue.png", cv2.IMREAD_UNCHANGED) # 左用
 
-if target_img_plus is None or target_img_minus is None:
+if target_img_normal is None or target_img_right is None or target_img_left is None:
     print("的の画像が見つかりません。")
     exit()
-
 
 # フォント設定
 font_path = "Creepster-Regular.ttf"
@@ -149,7 +150,7 @@ with mp_pose.Pose(
                         random.randint(100, h-100),
                         target_radius, target_amp_x, target_amp_y, w, h
                     )
-                    ttype = random.choice([0, 1])
+                    ttype = random.choice([0, 1, 2])
                     tcenterx, tcentery = tx, ty
                     targets.append({
                         "x": tx, "y": ty,
@@ -184,14 +185,37 @@ with mp_pose.Pose(
                     #左手首を描画 (緑色の点)
                     cv2.circle(display_frame, (lwx, lwy), 10, (0, 255, 0), -1)
 
-                    if (dist_r < target_radius or dist_l < target_radius) and not target["hit"]:
-                        score += (1 if target["type"] == 0 else -1)
-                        target["hit"] = True
-                        target["x"] = -9999  # 一旦画面外へ
+                    #当たり判定
+                    right_hit = (dist_r < target_radius)
+                    left_hit = (dist_l < target_radius)
+
+                    if not target["hit"]:
+                        if target["type"] == 0:
+                            if right_hit or left_hit:
+                                score += 1
+                                target["hit"] = True
+                                target["x"] = -9999
+                        elif target["type"] == 1:
+                            if right_hit:
+                                score += 1
+                                target["hit"] = True
+                                target["x"] = -9999
+                        elif target["type"] == 2:
+                            if left_hit:
+                                score += 1
+                                target["hit"] = True
+                                target["x"] = -9999
+
 
                 # --- 的画像の描画 ---
                 target_size = target_radius * 2
-                target_img = target_img_plus if target["type"] == 0 else target_img_minus
+                if target["type"] == 0:
+                    target_img = target_img_normal
+                elif target["type"] == 1:
+                    target_img = target_img_right
+                else:
+                    target_img = target_img_left
+            
                 target_img = cv2.resize(target_img, (target_size, target_size))
 
                 x1, y1 = target["x"] - target_radius, target["y"] - target_radius
@@ -219,7 +243,7 @@ with mp_pose.Pose(
                     random.randint(100, h-100),
                     target_radius, target_amp_x, target_amp_y, w, h
                 )
-                ttype = random.choice([0, 1])
+                ttype = random.choice([0, 1, 2])
                 targets.append({
                     "x": tx, "y": ty,
                     "center_x": tx, "center_y": ty,
