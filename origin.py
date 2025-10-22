@@ -27,6 +27,8 @@ if os.path.exists(score_file):
 # ゲーム設定
 game_time = 30
 score = 0
+combo = 0
+last_hit_time = 0
 target_radius = 50
 frame_counter = 0
 new_target_frame_interval = 25
@@ -190,19 +192,40 @@ with mp_pose.Pose(
                     left_hit = (dist_l < target_radius)
 
                     if not target["hit"]:
+                        # === 当たり判定とスコア・コンボ処理 ===
+                        now = time.time()
+
+                        def apply_combo(base_point):
+                            global combo, last_hit_time
+                            # 最初のヒットならそのまま
+                            if last_hit_time == 0:
+                                combo = 1
+                            # 2秒以内ならコンボ継続
+                            elif now - last_hit_time <= 2:
+                                combo += 1
+                            # 2秒以上経過ならリセット
+                            else:
+                                combo = 0
+                            last_hit_time = now
+
+                            # 10コンボ以上なら+1点ボーナス
+                            bonus = 1 if combo >= 10 else 0
+                            return base_point + bonus
+
+                        # コンボ対応スコア加算処理
                         if target["type"] == 0:
                             if right_hit or left_hit:
-                                score += 1
+                                score += apply_combo(1)
                                 target["hit"] = True
                                 target["x"] = -9999
                         elif target["type"] == 1:
                             if right_hit:
-                                score += 1
+                                score += apply_combo(1)
                                 target["hit"] = True
                                 target["x"] = -9999
                         elif target["type"] == 2:
                             if left_hit:
-                                score += 1
+                                score += apply_combo(1)
                                 target["hit"] = True
                                 target["x"] = -9999
 
@@ -256,10 +279,15 @@ with mp_pose.Pose(
             elapsed = int(time.time() - start_time)
             remaining = max(0, game_time - elapsed)
 
+            if combo > 0 and time.time() - last_hit_time > 2:
+                combo = 0
+
             img_pil = Image.fromarray(cv2.cvtColor(display_frame, cv2.COLOR_BGR2RGB))
             draw = ImageDraw.Draw(img_pil)
             draw.text((30, 30), f"TIME: {remaining}", font=font_text, fill=(255, 255, 255))
             draw.text((400, 30), f"SCORE: {score}", font=font_text, fill=(255, 255, 255))
+            if combo > 0:
+                draw.text((30, 80), f"COMBO: {combo}", font=font_text, fill=(255, 200, 0))
             display_frame = cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
 
             # --- 終了判定 ---
