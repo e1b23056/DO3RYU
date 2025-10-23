@@ -30,6 +30,7 @@ score = 0
 combo = 0
 last_hit_time = 0
 target_radius = 50
+effect_size = target_radius * 2
 frame_counter = 0
 new_target_frame_interval = 25
 hit_flag = False
@@ -45,6 +46,7 @@ target_center_y = 100 # 動きの中心Y座標
 
 targets = []  # 各お化けのデータを格納
 max_targets = 2  # 同時に表示する最大数
+hit_effects = []  # 魂抜けエフェクトのデータを格納
 
 def generate_new_target(prev_x, prev_y, radius, amp_x, amp_y, w, h, min_dist=120):#的の位置を離れるような設定
     while True:
@@ -66,9 +68,14 @@ if bg is None or start_img is None:
 target_img_normal = cv2.imread("obake_green.png", cv2.IMREAD_UNCHANGED) # 普通用
 target_img_right = cv2.imread("obake_red.png", cv2.IMREAD_UNCHANGED)   # 右用
 target_img_left = cv2.imread("obake_blue.png", cv2.IMREAD_UNCHANGED) # 左用
+soul_effect = cv2.imread("soul_effect.png", cv2.IMREAD_UNCHANGED)
 
 if target_img_normal is None or target_img_right is None or target_img_left is None:
     print("的の画像が見つかりません。")
+    exit()
+
+if soul_effect is None:
+    print("魂抜けエフェクト画像が見つかりません。")
     exit()
 
 # フォント設定
@@ -217,16 +224,19 @@ with mp_pose.Pose(
                             if right_hit or left_hit:
                                 score += apply_combo(1)
                                 target["hit"] = True
+                                hit_effects.append({"x": target["x"], "y": target["y"], "time": time.time()})
                                 target["x"] = -9999
                         elif target["type"] == 1:
                             if right_hit:
                                 score += apply_combo(1)
                                 target["hit"] = True
+                                hit_effects.append({"x": target["x"], "y": target["y"], "time": time.time()})
                                 target["x"] = -9999
                         elif target["type"] == 2:
                             if left_hit:
                                 score += apply_combo(1)
                                 target["hit"] = True
+                                hit_effects.append({"x": target["x"], "y": target["y"], "time": time.time()})
                                 target["x"] = -9999
 
 
@@ -297,6 +307,29 @@ with mp_pose.Pose(
                     for s in scores:
                         f.write(str(s) + "\n")
                 state = "result"
+
+            current_time = time.time()
+            hit_effects = [e for e in hit_effects if current_time - e["time"] < 0.5]  # 0.5秒間表示
+
+            for e in hit_effects:
+                alpha = max(0, 1 - (current_time - e["time"]) / 0.5)  # 時間経過で透明化
+                target_img = cv2.resize(soul_effect, (effect_size, effect_size))
+
+                x1, y1 = e["x"] - target_radius, e["y"] - target_radius
+                x2, y2 = e["x"] + target_radius, e["y"] + target_radius
+
+                x1_disp, y1_disp = max(0, x1), max(0, y1)
+                x2_disp, y2_disp = min(display_frame.shape[1], x2), min(display_frame.shape[0], y2)
+
+                if x2_disp > x1_disp and y2_disp > y1_disp:
+                    crop = target_img[0:(y2_disp - y1_disp), 0:(x2_disp - x1_disp)]
+                    if crop.shape[2] == 4:
+                        alpha_s = crop[:, :, 3] / 255.0
+                        for c in range(3):
+                            display_frame[y1_disp:y2_disp, x1_disp:x2_disp, c] = (
+                                alpha_s * crop[:, :, c] + (1 - alpha_s) * display_frame[y1_disp:y2_disp, x1_disp:x2_disp, c]
+                            )
+
         # === リザルト画面 ===
         elif state == "result":
             display_frame[:] = (0, 0, 0)
