@@ -25,7 +25,7 @@ if os.path.exists(score_file):
                 pass
 
 # ゲーム設定
-game_time = 30
+game_time = 60
 score = 0
 combo = 0
 last_hit_time = 0
@@ -159,7 +159,11 @@ with mp_pose.Pose(
                         random.randint(100, h-100),
                         target_radius, target_amp_x, target_amp_y, w, h
                     )
-                    ttype = random.choice([0, 1, 2])
+                    #15秒で的の出現変化
+                    if int(time.time() - start_time) < 15:
+                        ttype = 0 
+                    else:
+                        ttype = random.choice([0, 1, 2])
                     tcenterx, tcentery = tx, ty
                     targets.append({
                         "x": tx, "y": ty,
@@ -189,10 +193,10 @@ with mp_pose.Pose(
                     dist_r = ((rwx - target["x"])**2 + (rwy - target["y"])**2)**0.5
                     dist_l = ((lwx - target["x"])**2 + (lwy - target["y"])**2)**0.5
 
-                    #右手首を描画 (緑色の点)
-                    cv2.circle(display_frame, (rwx, rwy), 10, (0, 255, 0), -1)
-                    #左手首を描画 (緑色の点)
-                    cv2.circle(display_frame, (lwx, lwy), 10, (0, 255, 0), -1)
+                    #右手首を描画 (青色の点)
+                    cv2.circle(display_frame, (rwx, rwy), 10, (0, 0, 255), -1)
+                    #左手首を描画 (赤色の点)
+                    cv2.circle(display_frame, (lwx, lwy), 10, (255, 0, 0), -1)
 
                     #当たり判定
                     right_hit = (dist_r < target_radius)
@@ -276,7 +280,11 @@ with mp_pose.Pose(
                     random.randint(100, h-100),
                     target_radius, target_amp_x, target_amp_y, w, h
                 )
-                ttype = random.choice([0, 1, 2])
+                #15秒で的の出現変化
+                if int(time.time() - start_time) < 15:
+                    ttype = 0 
+                else:
+                    ttype = random.choice([0, 1, 2])
                 targets.append({
                     "x": tx, "y": ty,
                     "center_x": tx, "center_y": ty,
