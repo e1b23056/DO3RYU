@@ -6,6 +6,7 @@ import os
 from PIL import Image, ImageDraw, ImageFont
 import numpy as np
 import math
+import pygame
 
 # MediaPipe Pose 初期化
 mp_pose = mp.solutions.pose
@@ -25,7 +26,7 @@ if os.path.exists(score_file):
                 pass
 
 # ゲーム設定
-game_time = 60
+game_time = 40
 score = 0
 combo = 0
 last_hit_time = 0
@@ -47,6 +48,9 @@ target_center_y = 100 # 動きの中心Y座標
 targets = []  # 各お化けのデータを格納
 max_targets = 2  # 同時に表示する最大数
 hit_effects = []  # 魂抜けエフェクトのデータを格納
+
+pygame.mixer.init(frequency = 44100)    # 初期設定
+pygame.mixer.music.load("bgm.mp3")     # 音楽ファイルの読み込み
 
 def generate_new_target(prev_x, prev_y, radius, amp_x, amp_y, w, h, min_dist=120):#的の位置を離れるような設定
     while True:
@@ -141,6 +145,7 @@ with mp_pose.Pose(
                 target_center_x = target_x = random.randint(target_radius + target_amp_x, w - target_radius - target_amp_x - 1)
                 target_center_y = target_y = random.randint(target_radius + target_amp_y, h - target_radius - target_amp_y - 1)
                 state = "play"
+                pygame.mixer.music.play(1)
             elif key == 27:
                 break
             continue
@@ -310,6 +315,7 @@ with mp_pose.Pose(
 
             # --- 終了判定 ---
             if remaining <= 0:
+                pygame.mixer.music.stop() 
                 scores.append(score)
                 with open(score_file, "w") as f:
                     for s in scores:
@@ -364,6 +370,7 @@ with mp_pose.Pose(
                 score = 0
                 start_time = time.time()
                 state = "play"
+                pygame.mixer.music.play(1)
             elif key == 27:
                 break
             continue
