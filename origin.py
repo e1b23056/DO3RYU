@@ -144,10 +144,67 @@ with mp_pose.Pose(
                 h, w, _ = display_frame.shape
                 target_center_x = target_x = random.randint(target_radius + target_amp_x, w - target_radius - target_amp_x - 1)
                 target_center_y = target_y = random.randint(target_radius + target_amp_y, h - target_radius - target_amp_y - 1)
-                state = "play"
+                state = "ready"
                 pygame.mixer.music.play(1)
             elif key == 27:
                 break
+            continue
+
+
+        # === 準備状態（カウントダウン） ===
+        if state == "ready":
+            countdown_start = time.time()
+            countdown_duration = 5  # 5秒
+            while True:
+                current_time = time.time()
+                elapsed = current_time - countdown_start
+                remaining_sec = int(countdown_duration - elapsed) + 1
+
+                ret, frame = cap.read()
+                if not ret:
+                    break
+
+                frame = cv2.flip(frame, 1)
+                bg_resized = cv2.resize(bg, (frame.shape[1], frame.shape[0]))
+                display_frame = bg_resized.copy()
+                rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                results = pose.process(rgb)
+
+                # === 手の描画 ===
+                if results.pose_landmarks:
+                    right_wrist = results.pose_landmarks.landmark[15]
+                    left_wrist = results.pose_landmarks.landmark[16]
+
+                    rwx = int(right_wrist.x * display_frame.shape[1])
+                    rwy = int(right_wrist.y * display_frame.shape[0])
+                    lwx = int(left_wrist.x * display_frame.shape[1])
+                    lwy = int(left_wrist.y * display_frame.shape[0])
+
+                    # 右手：青，左手：赤
+                    cv2.circle(display_frame, (rwx, rwy), 10, (0, 0, 255), -1)
+                    cv2.circle(display_frame, (lwx, lwy), 10, (255, 0, 0), -1)
+
+                # === カウントダウン数字描画 ===
+                img_pil = Image.fromarray(cv2.cvtColor(display_frame, cv2.COLOR_BGR2RGB))
+                draw = ImageDraw.Draw(img_pil)
+                if remaining_sec > 0:
+                    draw_centered_text(draw, str(remaining_sec), font_title, 250, (255, 255, 255), frame.shape[1], shadow=True)
+                else:
+                    draw_centered_text(draw, "GO!", font_title, 250, (255, 100, 100), frame.shape[1], shadow=True)
+                display_frame = cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
+
+                cv2.imshow("Pose Game", display_frame)
+                key = cv2.waitKey(30) & 0xFF
+                if key == 27:  # ESCで中断
+                    state = "start"
+                    break
+
+                # 5秒経過したらplayに移行
+                if elapsed >= countdown_duration:
+                    state = "play"
+                    start_time = time.time()
+                    pygame.mixer.music.play(-1)  # BGM開始
+                    break
             continue
 
         # === ゲーム中 ===
@@ -369,7 +426,7 @@ with mp_pose.Pose(
             if key == 32:
                 score = 0
                 start_time = time.time()
-                state = "play"
+                state = "start"
                 pygame.mixer.music.play(1)
             elif key == 27:
                 break
