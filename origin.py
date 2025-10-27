@@ -51,6 +51,7 @@ hit_effects = []  # 魂抜けエフェクトのデータを格納
 
 pygame.mixer.init(frequency = 44100)    # 初期設定
 pygame.mixer.music.load("bgm.mp3")     # 音楽ファイルの読み込み
+se_hit = pygame.mixer.Sound("se.mp3")  # ヒット音の読み込み
 
 def generate_new_target(prev_x, prev_y, radius, amp_x, amp_y, w, h, min_dist=120):#的の位置を離れるような設定
     while True:
@@ -72,13 +73,15 @@ if bg is None or start_img is None:
 target_img_normal = cv2.imread("obake_green.png", cv2.IMREAD_UNCHANGED) # 普通用
 target_img_right = cv2.imread("obake_red.png", cv2.IMREAD_UNCHANGED)   # 右用
 target_img_left = cv2.imread("obake_blue.png", cv2.IMREAD_UNCHANGED) # 左用
-soul_effect = cv2.imread("soul_effect.png", cv2.IMREAD_UNCHANGED)
+soul_effect_blue = cv2.imread("soul_blue.png", cv2.IMREAD_UNCHANGED)
+soul_effect_red = cv2.imread("soul_red.png", cv2.IMREAD_UNCHANGED)
+soul_effect_green = cv2.imread("soul_green.png", cv2.IMREAD_UNCHANGED)
 
 if target_img_normal is None or target_img_right is None or target_img_left is None:
     print("的の画像が見つかりません。")
     exit()
 
-if soul_effect is None:
+if soul_effect_blue is None or soul_effect_red is None or soul_effect_green is None:
     print("魂抜けエフェクト画像が見つかりません。")
     exit()
 
@@ -289,22 +292,27 @@ with mp_pose.Pose(
                         if target["type"] == 0:
                             if right_hit or left_hit:
                                 score += apply_combo(1)
+                                se_hit.play()  # ヒット音再生
                                 target["hit"] = True
                                 hit_effects.append({"x": target["x"], "y": target["y"], "time": time.time()})
                                 target["x"] = -9999
+                                effect = 0
                         elif target["type"] == 1:
                             if right_hit:
                                 score += apply_combo(1)
+                                se_hit.play()  # ヒット音再生
                                 target["hit"] = True
                                 hit_effects.append({"x": target["x"], "y": target["y"], "time": time.time()})
                                 target["x"] = -9999
+                                effect = 1
                         elif target["type"] == 2:
                             if left_hit:
                                 score += apply_combo(1)
+                                se_hit.play()  # ヒット音再生
                                 target["hit"] = True
                                 hit_effects.append({"x": target["x"], "y": target["y"], "time": time.time()})
                                 target["x"] = -9999
-
+                                effect = 2
 
                 # --- 的画像の描画 ---
                 target_size = target_radius * 2
@@ -368,6 +376,8 @@ with mp_pose.Pose(
             draw.text((400, 30), f"SCORE: {score}", font=font_text, fill=(255, 255, 255))
             if combo > 0:
                 draw.text((30, 80), f"COMBO: {combo}", font=font_text, fill=(255, 200, 0))
+                if combo >= 10:
+                    draw.text((30, 120), "BONUS ACTIVE!", font=font_small, fill=(255, 100, 100))
             display_frame = cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
 
             # --- 終了判定 ---
@@ -384,7 +394,14 @@ with mp_pose.Pose(
 
             for e in hit_effects:
                 alpha = max(0, 1 - (current_time - e["time"]) / 0.5)  # 時間経過で透明化
-                target_img = cv2.resize(soul_effect, (effect_size, effect_size))
+                if effect == 0:
+                    soul = soul_effect_green
+                elif effect == 1:
+                    soul = soul_effect_red
+                else:
+                    soul = soul_effect_blue
+
+                target_img = cv2.resize(soul, (effect_size, effect_size))
 
                 x1, y1 = e["x"] - target_radius, e["y"] - target_radius
                 x2, y2 = e["x"] + target_radius, e["y"] + target_radius
