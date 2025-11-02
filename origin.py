@@ -424,21 +424,62 @@ with mp_pose.Pose(
 
         # === リザルト画面 ===
         elif state == "result":
-            display_frame[:] = (0, 0, 0)
-            img_pil = Image.fromarray(display_frame)
+            result_img = cv2.imread("result_screen.jpg")
+            if result_img is None:
+                display_frame[:] = (0, 0, 0)
+            else:
+                result_resized = cv2.resize(result_img, (frame.shape[1], frame.shape[0]))
+                 # ▼ここで明度を下げる（0.0〜1.0 で暗く、1.0 で元のまま）
+                DIM_ALPHA = 0.55  # 明るさ係数（数字を小さくすると暗くなる）
+                display_frame = cv2.convertScaleAbs(result_resized, alpha=DIM_ALPHA, beta=0)
+
+                # さらに軽く暗幕を足してコントラスト維持（任意）
+                overlay = np.zeros_like(display_frame)
+                display_frame = cv2.addWeighted(display_frame, 1.0, overlay, 0.25, 0)
+
+            # --- お化けの飾りを右下・左下に配置 ---
+            obake_size = 180  # お化けの表示サイズ
+            obake_right = cv2.resize(target_img_right, (obake_size, obake_size))
+            obake_left = cv2.resize(target_img_left, (obake_size, obake_size))
+
+            h, w, _ = display_frame.shape
+            # 左下
+            y1_l = h - obake_size - 20
+            x1_l = 20
+            # 右下
+            y1_r = h - obake_size - 20
+            x1_r = w - obake_size - 20
+
+            # 透過対応描画関数
+            def overlay_image(bg, fg, x, y):
+                if fg.shape[2] == 4:  # αチャンネルあり
+                    alpha = fg[:, :, 3] / 255.0
+                    for c in range(3):
+                        bg[y:y+fg.shape[0], x:x+fg.shape[1], c] = (
+                            alpha * fg[:, :, c] + (1 - alpha) * bg[y:y+fg.shape[0], x:x+fg.shape[1], c]
+                        )
+
+            overlay_image(display_frame, obake_left, x1_l, y1_l)
+            overlay_image(display_frame, obake_right, x1_r, y1_r)
+
+            # --- テキスト描画 ---
+            img_pil = Image.fromarray(cv2.cvtColor(display_frame, cv2.COLOR_BGR2RGB))
             draw = ImageDraw.Draw(img_pil)
 
-            base_y = 50  # ← 全体をさらに上に
-            draw_centered_text(draw, "GAME OVER", font_title, base_y, (255, 0, 0), frame.shape[1])
+            # フォントを少し小さくして収まり良く
+            font_title_small = ImageFont.truetype(font_path, 70)
+
+            base_y = 80  # 文字の縦位置調整
+            draw_centered_text(draw, "THANK YOU FOR PLAYING", font_title_small, base_y, (255, 0, 0), frame.shape[1])
             draw_centered_text(draw, f"YOUR SCORE: {score}", font_sub, base_y + 100, (255, 255, 255), frame.shape[1])
 
             # ランキング（上位3位のみ）
             ranking = sorted(scores, reverse=True)[:3]
-            draw_centered_text(draw, "RANKING", font_sub, base_y + 200, (0, 255, 0), frame.shape[1])
+            draw_centered_text(draw, "RANKING", font_sub, base_y + 220, (0, 255, 0), frame.shape[1])
             for i, s in enumerate(ranking):
-                draw_centered_text(draw, f"{i+1}. {s}", font_small, base_y + 250 + i * 40, (255, 255, 255), frame.shape[1])
+                draw_centered_text(draw, f"{i+1}. {s}", font_small, base_y + 270 + i * 40, (255, 255, 255), frame.shape[1])
 
-            draw_centered_text(draw, "Press SPACE to Restart or ESC to Quit", font_small, base_y + 430, (200, 200, 200), frame.shape[1])
+            draw_centered_text(draw, "Press SPACE to Restart or ESC to Quit", font_small, base_y + 460, (200, 200, 200), frame.shape[1])
 
             display_frame = cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
             cv2.imshow("Pose Game", display_frame)
