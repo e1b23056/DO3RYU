@@ -50,7 +50,8 @@ max_targets = 2  # 同時に表示する最大数
 hit_effects = []  # 魂抜けエフェクトのデータを格納
 
 pygame.mixer.init(frequency = 44100)    # 初期設定
-pygame.mixer.music.load("bgm.mp3")     # 音楽ファイルの読み込み
+bgm = "bgm.mp3"
+end_BGM = "endbgm.mp3"
 se_hit = pygame.mixer.Sound("se.mp3")  # ヒット音の読み込み
 
 def generate_new_target(prev_x, prev_y, radius, amp_x, amp_y, w, h, min_dist=120):#的の位置を離れるような設定
@@ -148,7 +149,6 @@ with mp_pose.Pose(
                 target_center_x = target_x = random.randint(target_radius + target_amp_x, w - target_radius - target_amp_x - 1)
                 target_center_y = target_y = random.randint(target_radius + target_amp_y, h - target_radius - target_amp_y - 1)
                 state = "ready"
-                pygame.mixer.music.play(1)
             elif key == 27:
                 break
             continue
@@ -156,6 +156,8 @@ with mp_pose.Pose(
 
         # === 準備状態（カウントダウン） ===
         if state == "ready":
+            pygame.mixer.music.load(bgm)     # 音楽ファイルの読み込み
+            pygame.mixer.music.play(-1)
             countdown_start = time.time()
             countdown_duration = 5  # 5秒
             while True:
@@ -388,6 +390,8 @@ with mp_pose.Pose(
                     for s in scores:
                         f.write(str(s) + "\n")
                 state = "result"
+                pygame.mixer.music.load(end_BGM)     # 音楽ファイルの読み込み
+                pygame.mixer.music.play(-1)
 
             current_time = time.time()
             hit_effects = [e for e in hit_effects if current_time - e["time"] < 0.5]  # 0.5秒間表示
@@ -444,7 +448,7 @@ with mp_pose.Pose(
                 score = 0
                 start_time = time.time()
                 state = "start"
-                pygame.mixer.music.play(1)
+                pygame.mixer.music.stop()
             elif key == 27:
                 break
             continue
