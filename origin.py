@@ -50,9 +50,9 @@ max_targets = 2  # 同時に表示する最大数
 hit_effects = []  # 魂抜けエフェクトのデータを格納
 
 pygame.mixer.init(frequency = 44100)    # 初期設定
-bgm = "bgm.mp3"
-end_BGM = "endbgm.mp3"
-se_hit = pygame.mixer.Sound("se.mp3")  # ヒット音の読み込み
+bgm = "music/bgm.mp3"
+end_BGM = "music/endbgm.mp3"
+se_hit = pygame.mixer.Sound("music/se.mp3")  # ヒット音の読み込み
 
 def generate_new_target(prev_x, prev_y, radius, amp_x, amp_y, w, h, min_dist=120):#的の位置を離れるような設定
     while True:
@@ -63,20 +63,20 @@ def generate_new_target(prev_x, prev_y, radius, amp_x, amp_y, w, h, min_dist=120
             return new_x, new_y
 
 # 背景・スタート画像
-bg = cv2.imread("background.jpg")
-start_img = cv2.imread("start_screen.jpg")
+bg = cv2.imread("images/background.jpg")
+start_img = cv2.imread("images/start_screen.jpg")
 if bg is None or start_img is None:
     print("背景またはスタート画面画像が見つかりません。")
     exit()
 
 # 的画像の読み込み
 # 的画像の読み込み
-target_img_normal = cv2.imread("obake_green.png", cv2.IMREAD_UNCHANGED) # 普通用
-target_img_right = cv2.imread("obake_red.png", cv2.IMREAD_UNCHANGED)   # 右用
-target_img_left = cv2.imread("obake_blue.png", cv2.IMREAD_UNCHANGED) # 左用
-soul_effect_blue = cv2.imread("soul_blue.png", cv2.IMREAD_UNCHANGED)
-soul_effect_red = cv2.imread("soul_red.png", cv2.IMREAD_UNCHANGED)
-soul_effect_green = cv2.imread("soul_green.png", cv2.IMREAD_UNCHANGED)
+target_img_normal = cv2.imread("images/obake_green.png", cv2.IMREAD_UNCHANGED) # 普通用
+target_img_right = cv2.imread("images/obake_red.png", cv2.IMREAD_UNCHANGED)   # 右用
+target_img_left = cv2.imread("images/obake_blue.png", cv2.IMREAD_UNCHANGED) # 左用
+soul_effect_blue = cv2.imread("images/soul_blue.png", cv2.IMREAD_UNCHANGED)
+soul_effect_red = cv2.imread("images/soul_red.png", cv2.IMREAD_UNCHANGED)
+soul_effect_green = cv2.imread("images/soul_green.png", cv2.IMREAD_UNCHANGED)
 
 if target_img_normal is None or target_img_right is None or target_img_left is None:
     print("的の画像が見つかりません。")
@@ -424,7 +424,7 @@ with mp_pose.Pose(
 
         # === リザルト画面 ===
         elif state == "result":
-            result_img = cv2.imread("result_screen.jpg")
+            result_img = cv2.imread("images/result_screen.jpg")
             if result_img is None:
                 display_frame[:] = (0, 0, 0)
             else:
