@@ -217,6 +217,8 @@ with mp_pose.Pose(
             current_time = time.time()
             frame_counter += 1
 
+            
+
             # --- お化けリストが空なら初期生成 ---
             if len(targets) == 0:
                 h, w, _ = display_frame.shape
@@ -424,6 +426,8 @@ with mp_pose.Pose(
 
         # === リザルト画面 ===
         elif state == "result":
+            targets.clear()
+            hit_effects.clear()
             result_img = cv2.imread("images/result_screen.jpg")
             if result_img is None:
                 display_frame[:] = (0, 0, 0)
